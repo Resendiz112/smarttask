@@ -98,12 +98,16 @@ public class MainActivity extends AppCompatActivity {
         fabAgregar.setOnClickListener(v -> mostrarDialogoAgregar());
 
         adapterActivas.setOnTaskUpdatedListener(task -> {
-            // Actualiza estado a completada y actualiza BD
-            task.setDone(true);
             taskViewModel.update(task);
 
-            // Cancelar alarmas porque está completada
-            AlarmHelper.cancelarAlarmas(this, task);
+            if (task.isDone()) {
+                // Si el usuario la marcó como completada, cancela alarmas
+                AlarmHelper.cancelarAlarmas(this, task);
+            } else {
+                // Si sigue activa, reprograma la alarma por si editó fecha/hora
+                AlarmHelper.cancelarAlarmas(this, task);
+                AlarmHelper.programarAlarma(this, task);
+            }
         });
 
         adapterCompletadas.setOnTaskUpdatedListener(task -> {
