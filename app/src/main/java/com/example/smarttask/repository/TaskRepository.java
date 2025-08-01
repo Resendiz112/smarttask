@@ -40,4 +40,11 @@ public class TaskRepository {
     public void delete(Task task) {
         executorService.execute(() -> taskDao.delete(task));
     }
+    public LiveData<List<Task>> getTareasActivas() {
+        return taskDao.getTareasActivas();
+    }
+
+    public LiveData<List<Task>> getTareasCompletadas() {
+        return taskDao.getTareasCompletadas();
+    }
 }

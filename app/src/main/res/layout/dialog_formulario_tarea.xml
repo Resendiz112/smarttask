@@ -1,48 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/dialog_formulario"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="24dp"
-    android:background="@android:color/white">
+    android:padding="20dp">
 
     <EditText
         android:id="@+id/editTitulo"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Título"
-        android:inputType="text"
-        android:layout_marginBottom="12dp"/>
+        android:hint="Título de la tarea" />
 
     <EditText
         android:id="@+id/editDescripcion"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Descripción"
-        android:inputType="textMultiLine"
-        android:minLines="3"
-        android:maxLines="5"
-        android:layout_marginBottom="16dp"/>
+        android:inputType="textMultiLine" />
 
-    <LinearLayout
+    <EditText
+        android:id="@+id/editFecha"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="end">
+        android:hint="Fecha (YYYY-MM-DD)"
+        android:focusable="false"
+        android:clickable="true" />
 
-        <Button
-            android:id="@+id/btnCancelar"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Cancelar" />
-
-        <Button
-            android:id="@+id/btnGuardar"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Guardar"
-            android:layout_marginStart="8dp"/>
-    </LinearLayout>
+    <EditText
+        android:id="@+id/editHora"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Hora (HH:mm)"
+        android:focusable="false"
+        android:clickable="true" />
 
 </LinearLayout>

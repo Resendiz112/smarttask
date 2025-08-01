@@ -6,14 +6,15 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 
+import com.example.smarttask.data.dao.TaskDao;
 import com.example.smarttask.data.model.Task;
 import com.example.smarttask.repository.TaskRepository;
 
 import java.util.List;
 
 public class TaskViewModel extends AndroidViewModel {
-//hola
-    private final TaskRepository repository;
+
+    private  TaskRepository repository;
     private final LiveData<List<Task>> allTasks;
 
     public TaskViewModel(@NonNull Application application) {
@@ -36,5 +37,12 @@ public class TaskViewModel extends AndroidViewModel {
 
     public void delete(Task task) {
         repository.delete(task);
+    }
+    public LiveData<List<Task>> getTareasActivas() {
+        return repository.getTareasActivas();
+    }
+
+    public LiveData<List<Task>> getTareasCompletadas() {
+        return repository.getTareasCompletadas();
     }
 }
