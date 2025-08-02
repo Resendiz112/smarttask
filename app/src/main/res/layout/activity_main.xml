@@ -1,42 +1,72 @@
+<!-- res/layout/activity_main.xml -->
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/mainLayout"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:padding="16dp">
 
-    <!-- RecyclerView para tareas activas -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerViewTareasActivas"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_alignParentTop="true"
-        android:layout_above="@+id/textToggleCompletadas"
-        android:paddingTop="16dp"
-        android:paddingBottom="70dp" />
-
-    <!-- Texto que funciona como toggle (acordeón) para tareas completadas -->
-    <TextView
-        android:id="@+id/textToggleCompletadas"
+    <!-- Botones "Activas" y "Completadas" -->
+    <LinearLayout
+        android:id="@+id/layoutBotones"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:background="#EEE"
-        android:padding="12dp"
-        android:text="Mostrar tareas completadas"
-        android:textColor="@color/purple_500"
-        android:textStyle="bold"
-        android:gravity="center" />
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_alignParentTop="true"
+        android:layout_marginBottom="8dp">
 
-    <!-- RecyclerView para tareas completadas (oculto inicialmente) -->
+        <TextView
+            android:id="@+id/btnActivas"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Activas"
+            android:textSize="18sp"
+            android:gravity="center"
+            android:padding="12dp"
+            android:textColor="#6200EE"
+            android:background="?attr/selectableItemBackground"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/btnCompletadas"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Completadas"
+            android:textSize="18sp"
+            android:gravity="center"
+            android:padding="12dp"
+            android:textColor="#000000"
+            android:background="?attr/selectableItemBackground" />
+    </LinearLayout>
+
+    <!-- RecyclerView principal -->
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerViewTareasCompletadas"
+        android:id="@+id/recyclerViewTareas"
         android:layout_width="match_parent"
-        android:layout_height="350dp"
-        android:layout_above="@id/textToggleCompletadas"
-        android:visibility="gone"
-        android:paddingBottom="70dp" />
+        android:layout_height="wrap_content"
+        android:layout_below="@id/layoutBotones"
+        android:layout_above="@id/textEmptyMessage"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        android:background="#ffeeee" />
 
-    <!-- Floating button -->
+    <!-- Texto que muestra mensaje si no hay tareas -->
+    <TextView
+        android:id="@+id/textEmptyMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="No hay tareas"
+        android:textSize="16sp"
+        android:textColor="#000000"
+        android:gravity="center"
+        android:layout_alignParentBottom="true"
+        android:padding="12dp"
+        android:visibility="gone" />
+
+    <!-- Floating Action Button -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabAgregar"
         android:layout_width="wrap_content"

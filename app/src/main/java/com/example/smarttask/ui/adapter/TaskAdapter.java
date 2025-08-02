@@ -26,14 +26,25 @@ import java.util.List;
 public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder> {
     private List<Task> listaTareas = new ArrayList<>();
 
-    private OnItemClickListener listener;
+    private OnTaskUpdatedListener onTaskUpdatedListener;
+    private OnTaskClickListener taskClickListener;
 
-    public interface OnItemClickListener {
-        void onItemClick(Task tarea);
+    // Interfaces para callbacks
+    public interface OnTaskUpdatedListener {
+        void onTaskUpdated(Task task);
     }
 
-    public void setOnItemClickListener(OnItemClickListener listener) {
-        this.listener = listener;
+    public interface OnTaskClickListener {
+        void onTaskClick(Task task);
+    }
+
+    // Setter para listeners
+    public void setOnTaskUpdatedListener(OnTaskUpdatedListener listener) {
+        this.onTaskUpdatedListener = listener;
+    }
+
+    public void setOnTaskClickListener(OnTaskClickListener listener) {
+        this.taskClickListener = listener;
     }
 
     @NonNull
@@ -52,13 +63,11 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
         holder.textFecha.setText(tarea.getFecha());
         holder.textHora.setText(tarea.getHora());
 
-        // 1. Limpia listener anterior para evitar loops indeseados
+        // Evitar llamadas repetidas por reciclado
         holder.checkboxDone.setOnCheckedChangeListener(null);
 
-        // 2. Aplica el estado actual de la tarea
         holder.checkboxDone.setChecked(tarea.isDone());
 
-        // 3. Asigna el nuevo listener
         holder.checkboxDone.setOnCheckedChangeListener((buttonView, isChecked) -> {
             tarea.setDone(isChecked);
             if (onTaskUpdatedListener != null) {
@@ -66,8 +75,14 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
             }
         });
 
-        // 4. Click para editar tarea
+        // Click para editar tarea con diálogo
         holder.itemView.setOnClickListener(view -> {
+            if (taskClickListener != null) {
+                taskClickListener.onTaskClick(tarea);
+                return;
+            }
+
+            // Si no hay listener externo, abrir diálogo por defecto
             AlertDialog.Builder builder = new AlertDialog.Builder(view.getContext());
             View dialogView = LayoutInflater.from(view.getContext()).inflate(R.layout.dialog_formulario_tarea, null);
             builder.setView(dialogView);
@@ -82,7 +97,6 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
             editFecha.setText(tarea.getFecha());
             editHora.setText(tarea.getHora());
 
-            // Selector de fecha
             editFecha.setOnClickListener(v -> {
                 Calendar calendar = Calendar.getInstance();
                 DatePickerDialog datePickerDialog = new DatePickerDialog(
@@ -98,7 +112,6 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
                 datePickerDialog.show();
             });
 
-            // Selector de hora
             editHora.setOnClickListener(v -> {
                 Calendar calendar = Calendar.getInstance();
                 TimePickerDialog timePickerDialog = new TimePickerDialog(
@@ -124,13 +137,8 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
                 notifyItemChanged(position);
 
                 if (onTaskUpdatedListener != null) {
-                    // Cancelar alarma previa
                     AlarmHelper.cancelarAlarmas(view.getContext(), tarea);
-
-                    // Reprogramar nueva alarma
                     AlarmHelper.programarAlarma(view.getContext(), tarea);
-
-                    // Actualizar en base de datos
                     onTaskUpdatedListener.onTaskUpdated(tarea);
                 }
             });
@@ -140,7 +148,6 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
         });
     }
 
-
     @Override
     public int getItemCount() {
         return listaTareas.size();
@@ -149,6 +156,10 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
     public void setTasks(List<Task> tareas) {
         this.listaTareas = tareas;
         notifyDataSetChanged();
+    }
+
+    public Task getTaskAt(int position) {
+        return listaTareas.get(position);
     }
 
     public static class TaskViewHolder extends RecyclerView.ViewHolder {
@@ -161,21 +172,7 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
             textDescripcion = itemView.findViewById(R.id.textDescripcion);
             textFecha = itemView.findViewById(R.id.textFecha);
             textHora = itemView.findViewById(R.id.textHora);
-            checkboxDone= itemView.findViewById(R.id.checkboxDone);
+            checkboxDone = itemView.findViewById(R.id.checkboxDone);
         }
     }
-
-    public interface OnTaskUpdatedListener {
-        void onTaskUpdated(Task task);
-    }
-
-    private OnTaskUpdatedListener onTaskUpdatedListener;
-
-    public void setOnTaskUpdatedListener(OnTaskUpdatedListener listener) {
-        this.onTaskUpdatedListener = listener;
-    }
-    public Task getTaskAt(int position) {
-        return listaTareas.get(position); // taskList es tu lista interna
-    }
-
 }

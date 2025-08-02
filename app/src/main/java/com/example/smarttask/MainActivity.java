@@ -9,7 +9,6 @@ import android.widget.DatePicker;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.TimePicker;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -20,7 +19,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.smarttask.data.model.Task;
 import com.example.smarttask.ui.adapter.TaskAdapter;
-import com.example.smarttask.ui.util.AlarmHelper; // Importa tu helper de alarmas
+import com.example.smarttask.ui.util.AlarmHelper;
 import com.example.smarttask.viewmodel.TaskViewModel;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
@@ -32,6 +31,10 @@ public class MainActivity extends AppCompatActivity {
     private TaskViewModel taskViewModel;
     private TaskAdapter adapterActivas;
     private TaskAdapter adapterCompletadas;
+    private RecyclerView recyclerViewTareas;
+    private TextView textEmptyMessage;
+
+    private boolean mostrandoActivas = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,86 +43,82 @@ public class MainActivity extends AppCompatActivity {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
             android.app.AlarmManager alarmManager = (android.app.AlarmManager) getSystemService(ALARM_SERVICE);
             if (alarmManager != null && !alarmManager.canScheduleExactAlarms()) {
-                // Si no tiene permiso para alarmas exactas, abrir configuración para activarlo
                 android.content.Intent intent = new android.content.Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
                 startActivity(intent);
             }
         }
+
         setContentView(R.layout.activity_main);
 
         fabAgregar = findViewById(R.id.fabAgregar);
-        RecyclerView recyclerViewActivas = findViewById(R.id.recyclerViewTareasActivas);
-        RecyclerView recyclerViewCompletadas = findViewById(R.id.recyclerViewTareasCompletadas);
-        TextView textToggleCompletadas = findViewById(R.id.textToggleCompletadas);
+        recyclerViewTareas = findViewById(R.id.recyclerViewTareas);
+        TextView btnActivas = findViewById(R.id.btnActivas);
+        TextView btnCompletadas = findViewById(R.id.btnCompletadas);
+        textEmptyMessage = findViewById(R.id.textEmptyMessage);
 
-        recyclerViewActivas.setLayoutManager(new LinearLayoutManager(this));
-        recyclerViewCompletadas.setLayoutManager(new LinearLayoutManager(this));
+        recyclerViewTareas.setLayoutManager(new LinearLayoutManager(this));
 
         adapterActivas = new TaskAdapter();
         adapterCompletadas = new TaskAdapter();
 
-        recyclerViewActivas.setAdapter(adapterActivas);
-        recyclerViewCompletadas.setAdapter(adapterCompletadas);
+        recyclerViewTareas.setAdapter(adapterActivas);
 
         taskViewModel = new ViewModelProvider(this).get(TaskViewModel.class);
 
         taskViewModel.getTareasActivas().observe(this, tareas -> {
             adapterActivas.setTasks(tareas);
-            // Cada vez que carga tareas activas, programa las alarmas para estas
-            if (tareas != null) {
-                for (Task tarea : tareas) {
-                    if (!tarea.isDone()) {
-                        AlarmHelper.programarAlarma(this, tarea);
-                    }
+            if (mostrandoActivas) {
+                recyclerViewTareas.setAdapter(adapterActivas);
+                textEmptyMessage.setVisibility(tareas.isEmpty() ? View.VISIBLE : View.GONE);
+                textEmptyMessage.setText("No hay tareas activas. ¡Crea una!");
+            }
+            for (Task tarea : tareas) {
+                if (!tarea.isDone()) {
+                    AlarmHelper.programarAlarma(this, tarea);
                 }
             }
         });
 
         taskViewModel.getTareasCompletadas().observe(this, tareas -> {
             adapterCompletadas.setTasks(tareas);
-
-            if ((tareas == null || tareas.isEmpty()) && recyclerViewCompletadas.getVisibility() == View.VISIBLE) {
-                recyclerViewCompletadas.setVisibility(View.GONE);
-                textToggleCompletadas.setText("Mostrar tareas completadas");
-                Toast.makeText(MainActivity.this, "No hay tareas completadas", Toast.LENGTH_SHORT).show();
+            if (!mostrandoActivas) {
+                recyclerViewTareas.setAdapter(adapterCompletadas);
+                textEmptyMessage.setVisibility(tareas.isEmpty() ? View.VISIBLE : View.GONE);
+                textEmptyMessage.setText("No hay tareas completadas. ¡Termina una!");
             }
         });
 
-        textToggleCompletadas.setOnClickListener(v -> {
-            if (recyclerViewCompletadas.getVisibility() == View.GONE) {
-                recyclerViewCompletadas.setVisibility(View.VISIBLE);
-                textToggleCompletadas.setText("Ocultar tareas completadas");
-            } else {
-                recyclerViewCompletadas.setVisibility(View.GONE);
-                textToggleCompletadas.setText("Mostrar tareas completadas");
-            }
+        btnActivas.setOnClickListener(v -> {
+            mostrandoActivas = true;
+            recyclerViewTareas.setAdapter(adapterActivas);
+            taskViewModel.getTareasActivas().getValue(); // Para refrescar mensaje vacío
+        });
+
+        btnCompletadas.setOnClickListener(v -> {
+            mostrandoActivas = false;
+            recyclerViewTareas.setAdapter(adapterCompletadas);
+            taskViewModel.getTareasCompletadas().getValue(); // Para refrescar mensaje vacío
         });
 
         fabAgregar.setOnClickListener(v -> mostrarDialogoAgregar());
 
         adapterActivas.setOnTaskUpdatedListener(task -> {
             taskViewModel.update(task);
-
             if (task.isDone()) {
-                // Si el usuario la marcó como completada, cancela alarmas
                 AlarmHelper.cancelarAlarmas(this, task);
             } else {
-                // Si sigue activa, reprograma la alarma por si editó fecha/hora
                 AlarmHelper.cancelarAlarmas(this, task);
                 AlarmHelper.programarAlarma(this, task);
             }
         });
 
         adapterCompletadas.setOnTaskUpdatedListener(task -> {
-            // Confirmación al desmarcar una tarea completada
             new AlertDialog.Builder(this)
                     .setTitle("¿Marcar como no completada?")
                     .setMessage("¿Deseas mover esta tarea nuevamente a activas?")
                     .setPositiveButton("Sí", (dialog, which) -> {
                         task.setDone(false);
                         taskViewModel.update(task);
-
-                        // Programa alarma porque ahora está activa
                         AlarmHelper.programarAlarma(this, task);
                     })
                     .setNegativeButton("Cancelar", (dialog, which) -> {
@@ -130,8 +129,10 @@ public class MainActivity extends AppCompatActivity {
                     .show();
         });
 
-        // Swipe para eliminar en tareas activas
-        ItemTouchHelper itemTouchHelper = new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.RIGHT) {
+        adapterCompletadas.setOnTaskClickListener(this::mostrarDialogoEditar);
+
+        // Swipe para eliminar tareas activas
+        ItemTouchHelper itemTouchHelperActivas = new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.RIGHT) {
             @Override
             public boolean onMove(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder, RecyclerView.ViewHolder target) {
                 return false;
@@ -140,16 +141,14 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction) {
                 int position = viewHolder.getAdapterPosition();
-                Task tareaAEliminar = adapterActivas.getTaskAt(position);
-
-                if (tareaAEliminar != null) {
+                Task tarea = adapterActivas.getTaskAt(position);
+                if (tarea != null) {
                     new AlertDialog.Builder(MainActivity.this)
                             .setTitle("¿Eliminar tarea?")
                             .setMessage("¿Estás seguro de que quieres eliminar esta tarea?")
                             .setPositiveButton("Sí", (dialog, which) -> {
-                                // Cancelar alarmas antes de borrar
-                                AlarmHelper.cancelarAlarmas(MainActivity.this, tareaAEliminar);
-                                taskViewModel.delete(tareaAEliminar);
+                                AlarmHelper.cancelarAlarmas(MainActivity.this, tarea);
+                                taskViewModel.delete(tarea);
                             })
                             .setNegativeButton("Cancelar", (dialog, which) -> adapterActivas.notifyItemChanged(position))
                             .setCancelable(false)
@@ -159,12 +158,41 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
-        itemTouchHelper.attachToRecyclerView(recyclerViewActivas);
+        itemTouchHelperActivas.attachToRecyclerView(recyclerViewTareas);
+
+        // Swipe para eliminar tareas completadas
+        ItemTouchHelper itemTouchHelperCompletadas = new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.RIGHT) {
+            @Override
+            public boolean onMove(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder, RecyclerView.ViewHolder target) {
+                return false;
+            }
+
+            @Override
+            public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction) {
+                int position = viewHolder.getAdapterPosition();
+                Task tarea = adapterCompletadas.getTaskAt(position);
+                if (tarea != null) {
+                    new AlertDialog.Builder(MainActivity.this)
+                            .setTitle("¿Eliminar tarea completada?")
+                            .setMessage("¿Estás seguro de que quieres eliminar esta tarea?")
+                            .setPositiveButton("Sí", (dialog, which) -> {
+                                AlarmHelper.cancelarAlarmas(MainActivity.this, tarea);
+                                taskViewModel.delete(tarea);
+                                adapterCompletadas.notifyItemRemoved(position); // <-- AGREGADO PARA ACTUALIZAR UI AL ELIMINAR
+                            })
+                            .setNegativeButton("Cancelar", (dialog, which) -> adapterCompletadas.notifyItemChanged(position))
+                            .setCancelable(false)
+                            .show();
+                } else {
+                    adapterCompletadas.notifyItemChanged(position);
+                }
+            }
+        });
+        itemTouchHelperCompletadas.attachToRecyclerView(recyclerViewTareas);
     }
 
-    private void mostrarDialogoAgregar()    {
-        LayoutInflater inflater = LayoutInflater.from(this);
-        View vistaFormulario = inflater.inflate(R.layout.dialog_formulario_tarea, null);
+    private void mostrarDialogoAgregar() {
+        View vistaFormulario = LayoutInflater.from(this).inflate(R.layout.dialog_formulario_tarea, null);
 
         EditText editTitulo = vistaFormulario.findViewById(R.id.editTitulo);
         EditText editDescripcion = vistaFormulario.findViewById(R.id.editDescripcion);
@@ -173,28 +201,16 @@ public class MainActivity extends AppCompatActivity {
 
         editFecha.setOnClickListener(v -> {
             Calendar calendar = Calendar.getInstance();
-            DatePickerDialog datePickerDialog = new DatePickerDialog(this,
-                    (DatePicker view, int year, int month, int dayOfMonth) -> {
-                        String fecha = year + "-" + (month + 1) + "-" + dayOfMonth;
-                        editFecha.setText(fecha);
-                    },
-                    calendar.get(Calendar.YEAR),
-                    calendar.get(Calendar.MONTH),
-                    calendar.get(Calendar.DAY_OF_MONTH));
-            datePickerDialog.show();
+            new DatePickerDialog(this, (view, year, month, day) -> {
+                editFecha.setText(year + "-" + (month + 1) + "-" + day);
+            }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show();
         });
 
         editHora.setOnClickListener(v -> {
             Calendar calendar = Calendar.getInstance();
-            TimePickerDialog timePickerDialog = new TimePickerDialog(this,
-                    (TimePicker view, int hourOfDay, int minute) -> {
-                        String hora = String.format("%02d:%02d", hourOfDay, minute);
-                        editHora.setText(hora);
-                    },
-                    calendar.get(Calendar.HOUR_OF_DAY),
-                    calendar.get(Calendar.MINUTE),
-                    true);
-            timePickerDialog.show();
+            new TimePickerDialog(this, (view, hourOfDay, minute) -> {
+                editHora.setText(String.format("%02d:%02d", hourOfDay, minute));
+            }, calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE), true).show();
         });
 
         new AlertDialog.Builder(this)
@@ -209,8 +225,52 @@ public class MainActivity extends AppCompatActivity {
                     if (!titulo.isEmpty()) {
                         Task tarea = new Task(titulo, descripcion, false, fecha, hora);
                         taskViewModel.insert(tarea);
+                        AlarmHelper.programarAlarma(this, tarea);
+                    }
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
 
-                        // Programar alarma para la nueva tarea
+    private void mostrarDialogoEditar(Task tarea) {
+        View vistaFormulario = LayoutInflater.from(this).inflate(R.layout.dialog_formulario_tarea, null);
+
+        EditText editTitulo = vistaFormulario.findViewById(R.id.editTitulo);
+        EditText editDescripcion = vistaFormulario.findViewById(R.id.editDescripcion);
+        EditText editFecha = vistaFormulario.findViewById(R.id.editFecha);
+        EditText editHora = vistaFormulario.findViewById(R.id.editHora);
+
+        editTitulo.setText(tarea.getTitle());
+        editDescripcion.setText(tarea.getDescription());
+        editFecha.setText(tarea.getFecha());
+        editHora.setText(tarea.getHora());
+
+        editFecha.setOnClickListener(v -> {
+            Calendar calendar = Calendar.getInstance();
+            new DatePickerDialog(this, (view, year, month, day) -> {
+                editFecha.setText(year + "-" + (month + 1) + "-" + day);
+            }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show();
+        });
+
+        editHora.setOnClickListener(v -> {
+            Calendar calendar = Calendar.getInstance();
+            new TimePickerDialog(this, (view, hourOfDay, minute) -> {
+                editHora.setText(String.format("%02d:%02d", hourOfDay, minute));
+            }, calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE), true).show();
+        });
+
+        new AlertDialog.Builder(this)
+                .setTitle("Editar tarea")
+                .setView(vistaFormulario)
+                .setPositiveButton("Guardar", (dialog, which) -> {
+                    tarea.setTitle(editTitulo.getText().toString());
+                    tarea.setDescription(editDescripcion.getText().toString());
+                    tarea.setFecha(editFecha.getText().toString());
+                    tarea.setHora(editHora.getText().toString());
+
+                    taskViewModel.update(tarea);
+                    AlarmHelper.cancelarAlarmas(this, tarea);
+                    if (!tarea.isDone()) {
                         AlarmHelper.programarAlarma(this, tarea);
                     }
                 })
